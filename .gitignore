@@ -1,0 +1,39 @@
+# JavaScript / Electron
+node_modules/
+dist/
+out/
+.vite/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local application data and evidence
+*.db
+*.sqlite
+*.sqlite3
+artifacts/
+evidence/
+reports/
+browser-profiles/
+playwright-report/
+test-results/
+
+# Secrets and machine-specific files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*.local.json
