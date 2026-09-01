@@ -1,0 +1,29 @@
+{
+  "fixture_site_version": "1.0.0",
+  "expected_coverage": {
+    "in_scope_urls": [
+      "http://127.0.0.1:8080/",
+      "http://127.0.0.1:8080/index.html",
+      "http://127.0.0.1:8080/page-two.html",
+      "http://127.0.0.1:8080/qa-errors.html",
+      "http://127.0.0.1:8080/redirect.html"
+    ],
+    "blocked_out_of_scope_urls": [
+      "https://external.example.org/"
+    ]
+  },
+  "expected_qa_findings": [
+    {
+      "category": "qa_broken_asset",
+      "rule_id": "QA-ASSET-01",
+      "affected_asset": "http://127.0.0.1:8080/assets/does-not-exist.png",
+      "expected_status_code": 404
+    },
+    {
+      "category": "qa_console_error",
+      "rule_id": "QA-CONSOLE-01",
+      "affected_asset": "http://127.0.0.1:8080/qa-errors.html",
+      "expected_snippet": "Controlled local fixture console error"
+    }
+  ]
+}
