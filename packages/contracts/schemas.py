@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
-from typing import List, Literal
+from enum import Enum
+from typing import List, Literal, Dict, Any, Optional
 from urllib.parse import urlparse
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -25,6 +26,44 @@ def is_subdomain_or_equal(sub: str, parent: str) -> bool:
     if sub == parent:
         return True
     return sub.endswith("." + parent)
+
+
+class ScanStatus(str, Enum):
+    DRAFT = "draft"
+    SCOPE_VALIDATED = "scope_validated"
+    QUEUED = "queued"
+    RUNNING = "running"
+    EVIDENCE_REVIEW = "evidence_review"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    BLOCKED = "blocked"
+
+
+class Severity(str, Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    INFO = "info"
+
+
+class Confidence(str, Enum):
+    CONFIRMED = "confirmed"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class ArtifactType(str, Enum):
+    SCREENSHOT = "screenshot"
+    DOM_SNAPSHOT = "dom_snapshot"
+    NETWORK_TRACE = "network_trace"
+    RESPONSE_HEADER = "response_header"
+    CONSOLE_LOG = "console_log"
+    PAGE_ERROR = "page_error"
+    HTTP_RESPONSE = "http_response"
+
 
 class AuthorizationRecord(BaseModel):
     contact_email: str = Field(..., description="Email address of the authorizing contact.")
@@ -128,7 +167,6 @@ class ScanPolicy(BaseModel):
         
         # 1. Enforce that policy target_domains are a subset of authorization target_domains
         for target_domain in self.target_domains:
-            # check if target_domain is a subdomain or equal to any authorized domain
             authorized = False
             for auth_domain in auth.target_domains:
                 if is_subdomain_or_equal(target_domain, auth_domain):
@@ -140,7 +178,6 @@ class ScanPolicy(BaseModel):
         # 2. Enforce that allowed_url_prefixes belong to one of the target_domains
         for prefix in self.allowed_url_prefixes:
             parsed = urlparse(prefix)
-            # parsed.netloc can contain a port (e.g. hostname:port), extract hostname
             prefix_host = parsed.hostname
             if not prefix_host:
                 raise ValueError(f"Unable to extract hostname from prefix '{prefix}'")
@@ -148,7 +185,6 @@ class ScanPolicy(BaseModel):
 
             scoped = False
             for target_domain in self.target_domains:
-                # Strip port from target_domain if present for matching (target_domain can be host:port)
                 target_host = target_domain
                 if ":" in target_domain:
                     target_host = target_domain.split(":")[0]
@@ -159,4 +195,66 @@ class ScanPolicy(BaseModel):
             if not scoped:
                 raise ValueError(f"URL prefix '{prefix}' does not match any of the policy target_domains: {self.target_domains}")
 
+        return self
+
+
+class EvidenceRef(BaseModel):
+    artifact_id: str = Field(..., description="Unique artifact ID.")
+    artifact_type: ArtifactType = Field(..., description="Type of evidence artifact.")
+    location_url: str = Field(..., description="Target URL where evidence was gathered.")
+    timestamp: datetime = Field(..., description="Timestamp of evidence capture.")
+    snippet_or_description: str = Field(..., description="Redacted snippet or summary of evidence.")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional structured metadata.")
+
+    @field_validator("artifact_id", "location_url", "snippet_or_description")
+    @classmethod
+    def validate_non_empty_str(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field cannot be empty or whitespace.")
+        return v.strip()
+
+
+class Finding(BaseModel):
+    finding_id: str = Field(..., description="Unique finding ID.")
+    title: str = Field(..., description="Short finding title.")
+    description: str = Field(..., description="Detailed description of the issue.")
+    category: str = Field(..., description="Category classification.")
+    affected_asset: str = Field(..., description="Affected URL or resource.")
+    severity: Severity = Field(..., description="Severity rating.")
+    confidence: Confidence = Field(..., description="Confidence rating.")
+    rule_id: str = Field(..., description="ID of triggering rule.")
+    rule_version: str = Field(..., description="Version of triggering rule.")
+    remediation: str = Field(..., description="Actionable fix guidance.")
+    evidence: List[EvidenceRef] = Field(..., description="List of evidence references. Must contain at least one item.")
+
+    @field_validator("finding_id", "title", "description", "category", "affected_asset", "rule_id", "rule_version", "remediation")
+    @classmethod
+    def validate_non_empty_text(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("String field cannot be empty.")
+        return v.strip()
+
+    @field_validator("evidence")
+    @classmethod
+    def validate_evidence_non_empty(cls, v: List[EvidenceRef]) -> List[EvidenceRef]:
+        if not v:
+            raise ValueError("A finding cannot exist without at least one evidence reference.")
+        return v
+
+
+class Report(BaseModel):
+    report_id: str = Field(..., description="Unique report ID.")
+    scan_id: str = Field(..., description="Associated scan ID.")
+    created_at: datetime = Field(..., description="Report creation timestamp.")
+    policy_summary: Dict[str, Any] = Field(..., description="Summary of scan policy.")
+    coverage_summary: Dict[str, Any] = Field(..., description="Crawl & scan coverage stats.")
+    findings: List[Finding] = Field(default_factory=list, description="List of verified findings.")
+    findings_count_by_severity: Dict[str, int] = Field(default_factory=dict, description="Counts of findings grouped by severity.")
+
+    @model_validator(mode="after")
+    def calculate_severity_counts(self) -> "Report":
+        counts = {sev.value: 0 for sev in Severity}
+        for finding in self.findings:
+            counts[finding.severity.value] += 1
+        self.findings_count_by_severity = counts
         return self

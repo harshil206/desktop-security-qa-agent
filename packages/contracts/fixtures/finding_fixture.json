@@ -1,0 +1,25 @@
+{
+  "finding_id": "FIND-2026-001",
+  "title": "Missing Strict-Transport-Security Header",
+  "description": "The HTTP response does not include the Strict-Transport-Security (HSTS) security header.",
+  "category": "security_header",
+  "affected_asset": "https://example.com/",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "rule_id": "SEC-HDR-HSTS-01",
+  "rule_version": "1.0.0",
+  "remediation": "Configure your web server to include 'Strict-Transport-Security: max-age=31536000; includeSubDomains' in HTTP response headers.",
+  "evidence": [
+    {
+      "artifact_id": "ART-HDR-001",
+      "artifact_type": "response_header",
+      "location_url": "https://example.com/",
+      "timestamp": "2026-09-01T12:00:00Z",
+      "snippet_or_description": "HTTP/1.1 200 OK\nServer: nginx\nContent-Type: text/html; charset=utf-8\n(Missing HSTS header)",
+      "metadata": {
+        "status_code": 200,
+        "missing_header": "Strict-Transport-Security"
+      }
+    }
+  ]
+}
