@@ -1,7 +1,7 @@
 /**
  * Electron Preload script exposing typed contextBridge API.
  */
-import { DesktopPreloadAPI } from "./preload-api";
+import { DesktopPreloadAPI, PolicyValidationResult } from "./preload-api";
 
 export const desktopAPI: DesktopPreloadAPI = {
   getAppMetadata: async () => ({
@@ -11,7 +11,19 @@ export const desktopAPI: DesktopPreloadAPI = {
   getHealth: async () => ({
     status: "ok",
     service: "scanner"
-  })
+  }),
+  validatePolicy: async (policyPayload: any): Promise<PolicyValidationResult> => {
+    if (!policyPayload?.authorization?.owner_confirmed) {
+      return { valid: false, errors: ["Owner authorization confirmation is required."] };
+    }
+    if (!policyPayload?.target_domains || policyPayload.target_domains.length === 0) {
+      return { valid: false, errors: ["At least one target domain is required."] };
+    }
+    if (!policyPayload?.allowed_url_prefixes || policyPayload.allowed_url_prefixes.length === 0) {
+      return { valid: false, errors: ["At least one allowed URL prefix is required."] };
+    }
+    return { valid: true, policy: policyPayload };
+  }
 };
 
 // When running inside Electron main context:

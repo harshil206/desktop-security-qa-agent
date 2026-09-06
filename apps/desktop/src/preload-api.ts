@@ -12,7 +12,14 @@ export interface ScannerHealthStatus {
   service: string;
 }
 
+export interface PolicyValidationResult {
+  valid: boolean;
+  errors?: string[];
+  policy?: any;
+}
+
 export interface DesktopPreloadAPI {
   getAppMetadata: () => Promise<AppMetadata>;
   getHealth: () => Promise<ScannerHealthStatus>;
+  validatePolicy: (policyPayload: any) => Promise<PolicyValidationResult>;
 }
