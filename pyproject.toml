@@ -1,0 +1,34 @@
+# Root Python tooling configuration.
+#
+# Created by task P1-01 to hold the shared linter, type-checker, and test-runner
+# settings only. Package metadata and runtime dependencies for the scanner
+# service are added by task P1-02 in services/scanner/.
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["tests/fixtures/site"]
+
+[tool.ruff.lint]
+# Ruff's default rule set (pycodestyle errors + pyflakes). Stricter rule
+# families are layered in by later task cards so existing Phase 0 code is not
+# reformatted outside its own task scope.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# tests/ is outside task P1-01's allowed files, so the unused `sys` import in
+# this Phase 0 test file cannot be removed here. Follow-up task should delete
+# the import and this ignore together.
+"tests/test_fixtures.py" = ["F401"]
+
+[tool.mypy]
+files = "packages/contracts"
+python_version = "3.10"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

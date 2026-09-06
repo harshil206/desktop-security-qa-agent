@@ -12,31 +12,33 @@ A local-first Electron desktop application with a local FastAPI + Playwright sca
 
 ## Current status
 
-The repository foundation and safe local fixtures are in place. Start implementation with task `P0-01` in `desktop-security-qa-agent-antigravity-task-plan.md`.
+Phase 0 is complete: rules of engagement and the scan policy schema (`P0-01`), the finding/evidence/report contracts (`P0-02`), and the local fixture site (`P0-03`). Task `P1-01` has established the monorepo layout and the local quality gates. Continue with task `P1-02` in `desktop-security-qa-agent-antigravity-task-plan.md`.
 
-## Planned local setup
+## Local setup
 
-The implementation tasks will establish the package manifests and exact automation commands. The intended local workflow is:
+Requires Node.js 20.11+ and Python 3.10+ on `PATH`. One command installs both toolchains:
 
 ```powershell
-# Desktop dependencies (after P1-01)
-npm install
-
-# Python scanner environment (after P1-02)
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .\services\scanner[dev]
-
-# Development app (after P1-04)
-npm run dev
-
-# Quality checks (after P1-01)
-npm run lint
-npm run typecheck
-npm run test
+npm run setup
 ```
 
-These commands are intentionally not runnable until their corresponding task cards create the project manifests and service code. Do not add scanner features before P0-01 through P0-03 are complete.
+One command runs every gate — lint, format check, type check, and unit tests across both stacks:
+
+```powershell
+npm run check
+```
+
+Individual gates are available if you need to narrow a failure:
+
+```powershell
+npm run lint          # eslint + ruff + prettier --check
+npm run typecheck     # tsc + mypy
+npm run test          # vitest + pytest
+npm run format        # rewrite formatting (prettier)
+```
+
+The scanner service dependencies (FastAPI, Playwright) arrive with task `P1-02`, and `npm run dev` arrives with task `P1-04`.
+
 
 ## Local test fixtures
 

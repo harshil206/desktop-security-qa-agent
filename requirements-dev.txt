@@ -1,0 +1,8 @@
+# Python toolchain for the local quality gates (task P1-01).
+#
+# Pinned exactly so every machine runs the same checks. Runtime dependencies
+# for the scanner service (FastAPI, Playwright) are added by task P1-02.
+pydantic==2.9.2
+pytest==8.3.3
+ruff==0.6.9
+mypy==1.11.2

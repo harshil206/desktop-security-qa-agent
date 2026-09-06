@@ -1,0 +1,14 @@
+node_modules/
+dist/
+out/
+.vite/
+.venv/
+__pycache__/
+
+# Phase 0 artifacts are owned by their own task cards. Formatting them here
+# would change fixture bytes that existing tests assert on.
+tests/
+packages/contracts/fixtures/
+
+# Long-form planning documents are prose, not code.
+*.md

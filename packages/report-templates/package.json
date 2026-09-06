@@ -1,0 +1,6 @@
+{
+  "name": "@desktop-security-qa-agent/report-templates",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTML & CSS report templates for security & QA scan findings"
+}

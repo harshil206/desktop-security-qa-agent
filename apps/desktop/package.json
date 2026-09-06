@@ -1,0 +1,10 @@
+{
+  "name": "@desktop-security-qa-agent/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron desktop UI application shell",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"No desktop UI unit tests configured yet\""
+  }
+}
