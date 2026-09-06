@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from services.scanner.config import ScannerConfig
+from services.scanner.api import router as policy_router
 
 config = ScannerConfig()
 
@@ -8,6 +9,8 @@ app = FastAPI(
     description="Local-only FastAPI scanner service shell",
     version=config.version
 )
+
+app.include_router(policy_router)
 
 @app.get("/health")
 def health_check():
