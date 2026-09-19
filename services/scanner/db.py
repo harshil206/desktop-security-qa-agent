@@ -33,6 +33,21 @@ def create_tables(conn: sqlite3.Connection) -> None:
                 FOREIGN KEY (scan_id) REFERENCES scans (scan_id)
             );
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS crawl_coverage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id TEXT NOT NULL,
+                url TEXT NOT NULL,
+                discovery_source TEXT NOT NULL,
+                depth INTEGER NOT NULL,
+                decision TEXT NOT NULL,
+                status_code INTEGER,
+                content_type TEXT,
+                rejection_reason TEXT,
+                timestamp TEXT NOT NULL,
+                FOREIGN KEY (scan_id) REFERENCES scans (scan_id)
+            );
+        """)
 
 def create_scan_record(
     conn: sqlite3.Connection,
@@ -129,3 +144,85 @@ def get_scan_history(conn: sqlite3.Connection, scan_id: str) -> List[Dict[str, A
     cur = conn.cursor()
     cur.execute("SELECT * FROM scan_state_history WHERE scan_id = ? ORDER BY history_id ASC", (scan_id,))
     return [dict(row) for row in cur.fetchall()]
+
+def save_crawl_coverage_records(
+    conn: sqlite3.Connection,
+    scan_id: str,
+    items: List[Dict[str, Any]]
+) -> None:
+    record = get_scan_record(conn, scan_id)
+    if not record:
+        raise ValueError(f"Scan job with ID '{scan_id}' not found.")
+
+    with conn:
+        for item in items:
+            decision_val = item.get("decision")
+            if hasattr(decision_val, "value"):
+                decision_val = decision_val.value
+            else:
+                decision_val = str(decision_val) if decision_val is not None else ""
+
+            ts = item.get("timestamp")
+            if hasattr(ts, "isoformat"):
+                ts = ts.isoformat()
+            elif not ts:
+                ts = datetime.now().isoformat()
+            else:
+                ts = str(ts)
+
+            conn.execute(
+                """
+                INSERT INTO crawl_coverage (
+                    scan_id, url, discovery_source, depth, decision, status_code, content_type, rejection_reason, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    scan_id,
+                    item.get("url"),
+                    item.get("discovery_source"),
+                    item.get("depth", 0),
+                    decision_val,
+                    item.get("status_code"),
+                    item.get("content_type"),
+                    item.get("rejection_reason"),
+                    ts
+                )
+            )
+
+def get_scan_coverage_summary(conn: sqlite3.Connection, scan_id: str) -> Dict[str, Any]:
+    record = get_scan_record(conn, scan_id)
+    if not record:
+        raise ValueError(f"Scan job with ID '{scan_id}' not found.")
+
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM crawl_coverage WHERE scan_id = ? ORDER BY id ASC", (scan_id,))
+    rows = cur.fetchall()
+
+    items = []
+    visited_count = 0
+    skipped_count = 0
+    blocked_count = 0
+
+    for row in rows:
+        item = dict(row)
+        item.pop("id", None)
+        item.pop("scan_id", None)
+        decision = item.get("decision")
+        if decision == "visited":
+            visited_count += 1
+        elif decision == "skipped":
+            skipped_count += 1
+        elif decision == "blocked":
+            blocked_count += 1
+
+        items.append(item)
+
+    return {
+        "scan_id": scan_id,
+        "total_discovered": len(items),
+        "visited_count": visited_count,
+        "skipped_count": skipped_count,
+        "blocked_count": blocked_count,
+        "items": items
+    }
+

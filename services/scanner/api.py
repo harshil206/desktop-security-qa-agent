@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ValidationError
-from packages.contracts.schemas import ScanPolicy
+from packages.contracts.schemas import ScanPolicy, CrawlCoverageItem, CrawlCoverageSummary
 from services.scanner.db import (
     init_db,
     create_scan_record,
@@ -9,7 +9,9 @@ from services.scanner.db import (
     update_scan_status,
     get_scan_history,
     cancel_scan_job,
-    emergency_stop_scan_job
+    emergency_stop_scan_job,
+    save_crawl_coverage_records,
+    get_scan_coverage_summary
 )
 from services.scanner.state_machine import InvalidStateTransitionError
 
@@ -64,6 +66,9 @@ class UpdateStatusRequest(BaseModel):
 
 class CancelRequest(BaseModel):
     reason: Optional[str] = "User initiated cancellation"
+
+class RecordCoverageRequest(BaseModel):
+    items: List[CrawlCoverageItem]
 
 
 @scans_router.post("", status_code=status.HTTP_201_CREATED)
@@ -127,3 +132,25 @@ def emergency_stop_scan(scan_id: str, req: Optional[CancelRequest] = None):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@scans_router.post("/{scan_id}/coverage", status_code=status.HTTP_201_CREATED)
+def record_scan_coverage(scan_id: str, req: RecordCoverageRequest):
+    """Record crawl coverage items for a scan job."""
+    try:
+        items_dict = [item.model_dump(mode="json") for item in req.items]
+        save_crawl_coverage_records(db_conn, scan_id, items_dict)
+        return get_scan_coverage_summary(db_conn, scan_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@scans_router.get("/{scan_id}/coverage", response_model=CrawlCoverageSummary)
+def get_scan_coverage(scan_id: str):
+    """Get scan crawl coverage summary and recorded items."""
+    try:
+        summary = get_scan_coverage_summary(db_conn, scan_id)
+        return summary
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+

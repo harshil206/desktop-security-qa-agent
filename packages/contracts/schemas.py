@@ -258,3 +258,30 @@ class Report(BaseModel):
             counts[finding.severity.value] += 1
         self.findings_count_by_severity = counts
         return self
+
+
+class CrawlCoverageDecision(str, Enum):
+    VISITED = "visited"
+    SKIPPED = "skipped"
+    BLOCKED = "blocked"
+
+
+class CrawlCoverageItem(BaseModel):
+    url: str = Field(..., description="Normalized target URL.")
+    discovery_source: str = Field(..., description="Source URL or entry point where link was discovered.")
+    depth: int = Field(..., ge=0, description="Recursion depth at which link was discovered.")
+    decision: CrawlCoverageDecision = Field(..., description="Crawling decision made.")
+    status_code: Optional[int] = Field(None, description="HTTP response status code if fetch attempted.")
+    content_type: Optional[str] = Field(None, description="HTTP Content-Type response header if fetched.")
+    rejection_reason: Optional[str] = Field(None, description="Reason if skipped or blocked.")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Timestamp of decision.")
+
+
+class CrawlCoverageSummary(BaseModel):
+    scan_id: str = Field(..., description="ID of the scan job.")
+    total_discovered: int = Field(0, ge=0)
+    visited_count: int = Field(0, ge=0)
+    skipped_count: int = Field(0, ge=0)
+    blocked_count: int = Field(0, ge=0)
+    items: List[CrawlCoverageItem] = Field(default_factory=list)
+
