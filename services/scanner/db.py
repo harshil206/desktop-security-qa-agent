@@ -105,6 +105,26 @@ def update_scan_status(
 
     return get_scan_record(conn, scan_id)
 
+def cancel_scan_job(
+    conn: sqlite3.Connection,
+    scan_id: str,
+    reason: str = "User initiated cancellation"
+) -> Dict[str, Any]:
+    return update_scan_status(conn, scan_id, "cancelled", reason)
+
+def emergency_stop_scan_job(
+    conn: sqlite3.Connection,
+    scan_id: str,
+    reason: str = "Emergency stop triggered"
+) -> Dict[str, Any]:
+    return update_scan_status(conn, scan_id, "blocked", reason)
+
+def is_scan_active(conn: sqlite3.Connection, scan_id: str) -> bool:
+    record = get_scan_record(conn, scan_id)
+    if not record:
+        return False
+    return record["status"] in ("queued", "running")
+
 def get_scan_history(conn: sqlite3.Connection, scan_id: str) -> List[Dict[str, Any]]:
     cur = conn.cursor()
     cur.execute("SELECT * FROM scan_state_history WHERE scan_id = ? ORDER BY history_id ASC", (scan_id,))

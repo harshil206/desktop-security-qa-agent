@@ -2,7 +2,15 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ValidationError
 from packages.contracts.schemas import ScanPolicy
-from services.scanner.db import init_db, create_scan_record, get_scan_record, update_scan_status, get_scan_history
+from services.scanner.db import (
+    init_db,
+    create_scan_record,
+    get_scan_record,
+    update_scan_status,
+    get_scan_history,
+    cancel_scan_job,
+    emergency_stop_scan_job
+)
 from services.scanner.state_machine import InvalidStateTransitionError
 
 router = APIRouter(prefix="/api/v1/policies", tags=["Policies"])
@@ -54,6 +62,9 @@ class UpdateStatusRequest(BaseModel):
     status: str
     reason: Optional[str] = None
 
+class CancelRequest(BaseModel):
+    reason: Optional[str] = "User initiated cancellation"
+
 
 @scans_router.post("", status_code=status.HTTP_201_CREATED)
 def create_scan(req: CreateScanRequest):
@@ -85,6 +96,32 @@ def patch_scan_status(scan_id: str, req: UpdateStatusRequest):
     """Transition scan job status with reason code validation."""
     try:
         scan = update_scan_status(db_conn, scan_id, req.status, req.reason)
+        return scan
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@scans_router.post("/{scan_id}/cancel")
+def cancel_scan(scan_id: str, req: Optional[CancelRequest] = None):
+    """Cancel a queued or running scan job safely."""
+    reason = req.reason if req and req.reason else "User initiated cancellation"
+    try:
+        scan = cancel_scan_job(db_conn, scan_id, reason)
+        return scan
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@scans_router.post("/{scan_id}/emergency-stop")
+def emergency_stop_scan(scan_id: str, req: Optional[CancelRequest] = None):
+    """Trigger an emergency stop, transitioning scan to blocked."""
+    reason = req.reason if req and req.reason else "Emergency stop triggered"
+    try:
+        scan = emergency_stop_scan_job(db_conn, scan_id, reason)
         return scan
     except InvalidStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -1,7 +1,7 @@
 /**
  * Electron Preload script exposing typed contextBridge API.
  */
-import { DesktopPreloadAPI, PolicyValidationResult } from "./preload-api";
+import { DesktopPreloadAPI, PolicyValidationResult, ScanControlResult } from "./preload-api";
 
 export const desktopAPI: DesktopPreloadAPI = {
   getAppMetadata: async () => ({
@@ -23,6 +23,18 @@ export const desktopAPI: DesktopPreloadAPI = {
       return { valid: false, errors: ["At least one allowed URL prefix is required."] };
     }
     return { valid: true, policy: policyPayload };
+  },
+  cancelScan: async (scanId: string, reason?: string): Promise<ScanControlResult> => {
+    return {
+      status: "cancelled",
+      reason: reason || "User initiated cancellation"
+    };
+  },
+  emergencyStop: async (scanId: string, reason?: string): Promise<ScanControlResult> => {
+    return {
+      status: "blocked",
+      reason: reason || "Emergency stop triggered"
+    };
   }
 };
 

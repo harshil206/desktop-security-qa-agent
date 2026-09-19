@@ -14,11 +14,15 @@ export function ScanSetupForm() {
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const [stopReason, setStopReason] = useState<string | null>(null);
 
   const handleValidate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setValidationErrors([]);
     setIsValidated(false);
+    setScanStatus(null);
+    setStopReason(null);
 
     const now = new Date();
     const validUntil = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -52,6 +56,22 @@ export function ScanSetupForm() {
     }
   };
 
+  const handleCancelScan = async () => {
+    const api = (window as any).electronAPI || desktopAPI;
+    const res = await api.cancelScan("SCAN-CURRENT", "User cancelled scan from desktop UI");
+    setScanStatus(res.status);
+    setStopReason(res.reason);
+    setIsValidated(false);
+  };
+
+  const handleEmergencyStop = async () => {
+    const api = (window as any).electronAPI || desktopAPI;
+    const res = await api.emergencyStop("SCAN-CURRENT", "Emergency stop triggered from desktop UI");
+    setScanStatus(res.status);
+    setStopReason(res.reason);
+    setIsValidated(false);
+  };
+
   return (
     <div style={{ maxWidth: "680px", margin: "0 auto", padding: "1.5rem", color: "#f8fafc" }}>
       <h2>New Scan Setup</h2>
@@ -62,6 +82,18 @@ export function ScanSetupForm() {
       {isValidated && (
         <div style={{ backgroundColor: "#065f46", color: "#34d399", padding: "0.75rem", borderRadius: "6px", marginBottom: "1rem" }}>
           ✓ Scan Policy successfully validated! Ready to queue scan job.
+        </div>
+      )}
+
+      {scanStatus === "cancelled" && (
+        <div style={{ backgroundColor: "#78350f", color: "#fde68a", padding: "0.75rem", borderRadius: "6px", marginBottom: "1rem" }} id="cancellation-status-banner">
+          ⚠️ <strong>Scan Cancelled:</strong> {stopReason}
+        </div>
+      )}
+
+      {scanStatus === "blocked" && (
+        <div style={{ backgroundColor: "#991b1b", color: "#fca5a5", padding: "0.75rem", borderRadius: "6px", marginBottom: "1rem" }} id="emergency-stop-status-banner">
+          🛑 <strong>Emergency Stop Triggered (BLOCKED):</strong> {stopReason}
         </div>
       )}
 
@@ -160,27 +192,64 @@ export function ScanSetupForm() {
           </div>
         </fieldset>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", gap: "0.5rem" }}>
           <div>
             <span style={{ background: "#1e293b", border: "1px solid #334155", padding: "0.4rem 0.8rem", borderRadius: "4px", fontSize: "0.85rem" }}>
               Mode: <strong>PASSIVE (Read-Only)</strong>
             </span>
           </div>
-          <button
-            type="submit"
-            style={{
-              background: ownerConfirmed ? "#2563eb" : "#475569",
-              color: "#fff",
-              padding: "0.6rem 1.5rem",
-              borderRadius: "6px",
-              border: "none",
-              fontWeight: 600,
-              cursor: ownerConfirmed ? "pointer" : "not-allowed",
-            }}
-            disabled={!ownerConfirmed}
-          >
-            Validate & Save Policy
-          </button>
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              onClick={handleCancelScan}
+              style={{
+                background: "#d97706",
+                color: "#fff",
+                padding: "0.5rem 1rem",
+                borderRadius: "6px",
+                border: "none",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+              id="cancel-scan-button"
+            >
+              Cancel Scan
+            </button>
+
+            <button
+              type="button"
+              onClick={handleEmergencyStop}
+              style={{
+                background: "#dc2626",
+                color: "#fff",
+                padding: "0.5rem 1rem",
+                borderRadius: "6px",
+                border: "none",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+              id="emergency-stop-button"
+            >
+              🛑 Emergency Stop
+            </button>
+
+            <button
+              type="submit"
+              style={{
+                background: ownerConfirmed ? "#2563eb" : "#475569",
+                color: "#fff",
+                padding: "0.5rem 1.2rem",
+                borderRadius: "6px",
+                border: "none",
+                fontWeight: 600,
+                cursor: ownerConfirmed ? "pointer" : "not-allowed",
+              }}
+              disabled={!ownerConfirmed}
+            >
+              Validate Policy
+            </button>
+          </div>
         </div>
       </form>
     </div>

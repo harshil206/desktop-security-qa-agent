@@ -18,8 +18,15 @@ export interface PolicyValidationResult {
   policy?: any;
 }
 
+export interface ScanControlResult {
+  status: string;
+  reason: string;
+}
+
 export interface DesktopPreloadAPI {
   getAppMetadata: () => Promise<AppMetadata>;
   getHealth: () => Promise<ScannerHealthStatus>;
   validatePolicy: (policyPayload: any) => Promise<PolicyValidationResult>;
+  cancelScan: (scanId: string, reason?: string) => Promise<ScanControlResult>;
+  emergencyStop: (scanId: string, reason?: string) => Promise<ScanControlResult>;
 }
